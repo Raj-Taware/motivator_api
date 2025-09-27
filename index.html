@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Motivational Quote</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h1 { text-align: center; color: #333; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #555; }
+        input[type="email"], input[type="text"], input[type="time"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: background-color 0.2s; }
+        button:hover { background-color: #0056b3; }
+        .message { text-align: center; margin-top: 20px; padding: 10px; border-radius: 4px; display: none; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Daily Motivator</h1>
+        <form id="subscribeForm">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="subject">Email Subject Line</label>
+                <input type="text" id="subject" name="subject" required>
+            </div>
+            <div class="form-group">
+                <label for="time">Preferred Reminder Time</label>
+                <input type="time" id="time" name="time" required>
+            </div>
+            <div class="form-group">
+                <label for="timezone">Your Timezone</label>
+                <select id="timezone" name="timezone" required></select>
+            </div>
+            <button type="submit">Subscribe</button>
+        </form>
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const timezoneSelect = document.getElementById('timezone');
+            
+            // Populate timezone dropdown
+            const timezones = Intl.supportedValuesOf('timeZone');
+            timezones.forEach(tz => {
+                const option = document.createElement('option');
+                option.value = tz;
+                option.textContent = tz;
+                timezoneSelect.appendChild(option);
+            });
+
+            // Set default to user's browser timezone
+            try {
+                const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                if (timezones.includes(userTimezone)) {
+                    timezoneSelect.value = userTimezone;
+                }
+            } catch (e) {
+                console.warn("Could not detect user timezone.", e);
+            }
+
+            // Handle form submission
+            const form = document.getElementById('subscribeForm');
+            const messageDiv = document.getElementById('message');
+            const button = form.querySelector('button');
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault(); // Prevent default form submission
+                
+                // --- Client-Side Validation ---
+                const email = document.getElementById('email').value;
+                const subject = document.getElementById('subject').value;
+                const time = document.getElementById('time').value;
+                const timezone = timezoneSelect.value;
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+                messageDiv.style.display = 'none';
+                messageDiv.className = 'message';
+
+                if (!email || !subject || !time || !timezone) {
+                    showMessage('Please fill out all fields.', 'error');
+                    return;
+                }
+                if (!emailRegex.test(email)) {
+                    showMessage('Please enter a valid email address.', 'error');
+                    return;
+                }
+                
+                button.disabled = true;
+                button.textContent = 'Submitting...';
+
+                // --- Wire to Backend ---
+                const data = {
+                    email: email,
+                    subject: subject,
+                    preferred_time: time, // e.g., "14:30"
+                    timezone: timezone      // e.g., "America/New_York"
+                };
+
+                try {
+                    // Replace this URL with your actual Render API endpoint URL
+                    const response = await fetch('https://your-fastapi-app.onrender.com/subscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (response.ok) {
+                        showMessage('Success! You are subscribed.', 'success');
+                        form.reset(); // Clear the form
+                    } else {
+                        const errorData = await response.json();
+                        showMessage(`Error: ${errorData.detail || 'Could not subscribe.'}`, 'error');
+                    }
+                } catch (error) {
+                    showMessage('A network error occurred. Please try again.', 'error');
+                } finally {
+                    button.disabled = false;
+                    button.textContent = 'Subscribe';
+                }
+            });
+
+            function showMessage(text, type) {
+                messageDiv.textContent = text;
+                messageDiv.classList.add(type);
+                messageDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
