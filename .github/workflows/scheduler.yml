@@ -1,0 +1,15 @@
+name: Trigger Daily Motivator
+
+on:
+  schedule:
+    # Runs every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
+
+jobs:
+  call-api-endpoint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the API endpoint
+        run: |
+          curl -X GET -H "x-cron-secret: ${{ secrets.CRON_SECRET_KEY }}" ${{ secrets.API_URL }}
