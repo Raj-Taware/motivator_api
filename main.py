@@ -24,9 +24,7 @@ app = FastAPI()
 
 # --- Add this CORS middleware block ---
 origins = [
-    "https://dailymotivator.netlify.app", # <--- Your correct live URL
-    "http://localhost",
-    "http://127.0.0.1",               # Optional: for local testing
+    "*"             # Optional: for local testing
 ]
 
 app.add_middleware(
