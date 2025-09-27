@@ -24,7 +24,10 @@ app = FastAPI()
 
 # --- Add this CORS middleware block ---
 origins = [
-    "*"             # Optional: for local testing
+    "https://dailymotivator.netlify.app",
+    "https://www.dailymotivator.netlify.app",
+    "http://localhost",
+    "http://127.0.0.1",
 ]
 
 app.add_middleware(
