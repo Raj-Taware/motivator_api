@@ -100,7 +100,8 @@ def log_action(db: Session, sub_id: int, action: str, actor: str, details: dict,
     db.commit()
 
 # --- External Service Functions ---
-def get_motivational_quote(prompt: str) -> str:
+def get_motivational_quote(prompt: str) -> (str | None, str | None):
+    """Calls OpenAI API. Returns (quote, None) on success or (None, error_message) on failure."""
     try:
         with httpx.Client() as client:
             response = client.post(
@@ -110,10 +111,12 @@ def get_motivational_quote(prompt: str) -> str:
                 timeout=20,
             )
             response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"].strip()
+            quote = response.json()["choices"][0]["message"]["content"].strip()
+            return (quote, None)
     except Exception as e:
-        print(f"Error calling OpenAI: {e}")
-        return None
+        error_message = str(e)
+        print(f"Error calling OpenAI: {error_message}")
+        return (None, error_message)
 
 def send_email(to_email: str, subject: str, body: str) -> (bool, int):
     from sendgrid import SendGridAPIClient
@@ -157,8 +160,14 @@ def send_reminders(db: Session = Depends(get_db)):
             preferred_dt_utc = preferred_dt_local.astimezone(datetime.timezone.utc)
             time_difference = (now_utc - preferred_dt_utc).total_seconds()
             if 0 <= time_difference < 600:
-                quote = get_motivational_quote(f"Given this subject: '{sub.subject}', return a single concise motivational quote (max 2 sentences, 50 words).") or "Here is your daily note as requested."
+                quote, error_details = get_motivational_quote(f"Given this subject: '{sub.subject}', return a single concise motivational quote (max 2 sentences, 50 words).")
+                
+                if not quote:
+                    log_action(db, sub.id, "LLM_API_CALL_FAILED", "SCHEDULER", {"error": error_details}, False)
+                    quote = "Here is your daily note as requested."
+                
                 send_success, status_code = send_email(sub.email, sub.subject, f"{quote}\n\n---\nYour daily dose of motivation.")
+                
                 if send_success:
                     sub.last_sent_date = today_utc
                     db.commit()
